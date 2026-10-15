@@ -41,7 +41,7 @@
   }
   function runSearch(){const term=normalize($('#search').value.trim()).replace(/\s+/g,' ');matches=[];activeMatch=-1;
     if(term){window.UMNA_WORDS.forEach((words,page)=>{for(let i=0;i<words.length;i++){if(!normalize(words[i].t).includes(term.split(' ')[0]))continue;let text='';for(let j=i;j<Math.min(words.length,i+20);j++){if(j>i&&Math.abs(words[j].y-words[j-1].y)>2)break;text+=(j>i?' ':'')+normalize(words[j].t);if(text.includes(term)){const group=words.slice(i,j+1);const x=Math.min(...group.map(w=>w.x)),y=Math.min(...group.map(w=>w.y));matches.push({page,x,y,w:Math.max(...group.map(w=>w.x+w.w))-x,h:Math.max(...group.map(w=>w.y+w.h))-y});break}if(text.length>term.length+words[i].t.length)break}}});}
-    if(matches.length){goMatch(0)}else{paintMatches();renderResults();setZoom(zoom)}
+    if(matches.length){fitPage=false;zoom=innerWidth<=700?2:1;goMatch(0)}else{paintMatches();renderResults();setZoom(zoom)}
   }
   $('#search').oninput=()=>{clearTimeout(searchTimer);searchTimer=setTimeout(runSearch,220)};
   $('#search').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();clearTimeout(searchTimer);if(matches.length)goMatch(activeMatch+(e.shiftKey?-1:1));else runSearch()}if(e.key==='Escape'){$('#search').value='';runSearch()}};
