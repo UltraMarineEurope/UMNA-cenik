@@ -1,6 +1,8 @@
 (() => {
   'use strict';
   const pages=window.UMNA_DOCUMENT, $=s=>document.querySelector(s), book=$('#book');
+  function toggleSearch(open){document.body.classList.toggle('search-open',open);$('#searchToggle').setAttribute('aria-expanded',String(open));$('#searchToggle').setAttribute('aria-label',open?'Close search':'Open search');if(open)$('#search').focus();else $('#search').blur()}
+  $('#searchToggle').onclick=()=>toggleSearch(!document.body.classList.contains('search-open'));
   let current=0,zoom=1,touch=null;
   const names=['Anchors & accessories','Stainless steel chains','Chain technology','Galvanized chains','Anchoring systems','Anchor selection'];
   function initial(){const match=location.hash.match(/^#page=(\d+)$/);return match?Math.max(0,Math.min(pages.length-1,Number(match[1])-1)):0}
@@ -36,7 +38,7 @@
   $('#fullscreen').onclick=async()=>{if(document.fullscreenElement){await document.exitFullscreen()}else if(document.body.classList.contains('focus-mode')){document.body.classList.remove('focus-mode')}else{try{if(!document.documentElement.requestFullscreen)throw new Error('unsupported');await document.documentElement.requestFullscreen()}catch{document.body.classList.add('focus-mode')}}syncFullscreen()};
   document.addEventListener('fullscreenchange',syncFullscreen);
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('focus-mode')){document.body.classList.remove('focus-mode');syncFullscreen()}});
-  document.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName))return;if(e.key==='/'){e.preventDefault();$('#search').focus()}if(e.key==='Escape')closeContents();if(e.key==='ArrowRight'){e.preventDefault();show(current+1)}if(e.key==='ArrowLeft'){e.preventDefault();show(current-1)}if(e.key==='Home')show(0);if(e.key==='End')show(pages.length-1)});
+  document.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName))return;if(e.key==='/'){e.preventDefault();toggleSearch(true)}if(e.key==='Escape')closeContents();if(e.key==='ArrowRight'){e.preventDefault();show(current+1)}if(e.key==='ArrowLeft'){e.preventDefault();show(current-1)}if(e.key==='Home')show(0);if(e.key==='End')show(pages.length-1)});
   let pinch=null,usedPinch=false;
   const distance=touches=>Math.hypot(touches[0].clientX-touches[1].clientX,touches[0].clientY-touches[1].clientY);
   const midpoint=touches=>({x:(touches[0].clientX+touches[1].clientX)/2,y:(touches[0].clientY+touches[1].clientY)/2});
@@ -62,7 +64,7 @@
   function renderResults(){const results=$('#results');results.replaceChildren();results.hidden=!$('#search').value.trim();if(results.hidden)return;
     const label=document.createElement('span');label.textContent=matches.length?`${activeMatch+1} / ${matches.length} ${matches.length===1?'match':'matches'} · Page ${matches[activeMatch].page+1}`:'No matches. Try a product code such as UA05.';results.append(label);
     if(matches.length){for(const [text,delta] of [['Previous match',-1],['Next match',1]]){const b=document.createElement('button');b.textContent=text==='Previous match'?'← Previous':'Next →';b.setAttribute('aria-label',text);b.onclick=()=>goMatch(activeMatch+delta);results.append(b)}}
-    const clear=document.createElement('button');clear.textContent='Clear search';clear.onclick=()=>{$('#search').value='';runSearch();$('#search').focus()};results.append(clear);
+    const clear=document.createElement('button');clear.textContent='Clear search';clear.onclick=()=>{$('#search').value='';runSearch();if(innerWidth<=700)toggleSearch(false);else $('#search').focus()};results.append(clear);
   }
   function runSearch(){const term=normalize($('#search').value.trim()).replace(/\s+/g,' ');matches=[];activeMatch=-1;
     if(term){window.UMNA_WORDS.forEach((words,page)=>{for(let i=0;i<words.length;i++){if(!normalize(words[i].t).includes(term.split(' ')[0]))continue;let text='';for(let j=i;j<Math.min(words.length,i+20);j++){if(j>i&&Math.abs(words[j].y-words[j-1].y)>2)break;text+=(j>i?' ':'')+normalize(words[j].t);if(text.includes(term)){const group=words.slice(i,j+1);const x=Math.min(...group.map(w=>w.x)),y=Math.min(...group.map(w=>w.y));matches.push({page,x,y,w:Math.max(...group.map(w=>w.x+w.w))-x,h:Math.max(...group.map(w=>w.y+w.h))-y});break}if(text.length>term.length+words[i].t.length)break}}});}
