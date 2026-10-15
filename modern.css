@@ -16,3 +16,4 @@
  body.focus-mode .toolbar,:fullscreen .toolbar{padding:4px 0;min-height:42px}body.focus-mode .pagination,:fullscreen .pagination{min-height:49px}body.focus-mode main,:fullscreen main{padding:0 3px}
 }
 @media(max-width:350px){.toolbar{gap:2px;padding-left:1px;padding-right:1px}.view-controls{gap:2px}.fit-control button{padding:6px 7px}.zoom-control button{width:24px}.zoom-control output{width:33px}#searchToggle{min-width:29px}.pages-button{padding:5px 3px}.heading h1{font-size:12px}.brand img{width:99px}}
+#viewport.zoomed,#viewport.zoomed .hotspot{cursor:grab}#viewport.dragging,#viewport.dragging *{cursor:grabbing!important}

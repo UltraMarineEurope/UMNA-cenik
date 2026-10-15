@@ -26,7 +26,7 @@
   const viewport=$('#viewport');
   function contentSize(){const style=getComputedStyle(viewport);return {width:viewport.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight),height:viewport.clientHeight-parseFloat(style.paddingTop)-parseFloat(style.paddingBottom)}}
   function baseWidth(){const size=contentSize();return Math.max(40,fitPage?Math.min(size.width,size.height*595.276/841.89):Math.min(size.width,1400))}
-  function setZoom(value){zoom=Math.max(.5,Math.min(5,value));book.style.width=`${baseWidth()*zoom}px`;$('#zoomValue').textContent=Math.round(zoom*100)+'%';$('#zoomOut').disabled=zoom<=.5;$('#zoomIn').disabled=zoom>=5;$('#fit').setAttribute('aria-pressed',String(fitPage&&zoom===1));$('#fitWidth').setAttribute('aria-pressed',String(!fitPage&&zoom===1));viewport.classList.toggle('zoomed',book.getBoundingClientRect().width>contentSize().width+1);}
+  function setZoom(value){zoom=Math.max(.5,Math.min(5,value));book.style.width=`${baseWidth()*zoom}px`;$('#zoomValue').textContent=Math.round(zoom*100)+'%';$('#zoomOut').disabled=zoom<=.5;$('#zoomIn').disabled=zoom>=5;$('#fit').setAttribute('aria-pressed',String(fitPage&&zoom===1));$('#fitWidth').setAttribute('aria-pressed',String(!fitPage&&zoom===1));const rect=book.getBoundingClientRect(),size=contentSize();viewport.classList.toggle('zoomed',rect.width>size.width+1||rect.height>size.height+1);}
   function anchorAt(x,y){const rect=book.getBoundingClientRect();return{x:(x-rect.left)/rect.width,y:(y-rect.top)/rect.height}}
   function restoreAnchor(anchor,x,y){const rect=book.getBoundingClientRect();viewport.scrollLeft+=rect.left+rect.width*anchor.x-x;viewport.scrollTop+=rect.top+rect.height*anchor.y-y}
   function zoomAround(value){const r=viewport.getBoundingClientRect(),x=r.left+viewport.clientWidth/2,y=r.top+viewport.clientHeight/2,a=anchorAt(x,y);setZoom(value);restoreAnchor(a,x,y)}
@@ -52,6 +52,26 @@
     if(touch&&!usedPinch&&fits){const dx=e.changedTouches[0].clientX-touch.x,dy=e.changedTouches[0].clientY-touch.y;if(Math.abs(dx)>65&&Math.abs(dx)>Math.abs(dy)*1.7)show(current+(dx<0?1:-1))}touch=null;
   },{passive:true});
   viewport.addEventListener('touchcancel',()=>{pinch=null;touch=null;usedPinch=false},{passive:true});
+  let mouseDrag=null,suppressDragClickUntil=0;
+  viewport.addEventListener('pointerdown',e=>{
+    if(e.pointerType!=='mouse'||e.button!==0)return;
+    const size=contentSize(),rect=book.getBoundingClientRect();
+    if(rect.width<=size.width+1&&rect.height<=size.height+1)return;
+    mouseDrag={id:e.pointerId,x:e.clientX,y:e.clientY,left:viewport.scrollLeft,top:viewport.scrollTop,moved:false};
+  });
+  viewport.addEventListener('pointermove',e=>{
+    if(!mouseDrag||e.pointerId!==mouseDrag.id)return;
+    const dx=e.clientX-mouseDrag.x,dy=e.clientY-mouseDrag.y;
+    if(!mouseDrag.moved&&Math.hypot(dx,dy)<5)return;
+    if(!mouseDrag.moved){mouseDrag.moved=true;viewport.setPointerCapture(e.pointerId);viewport.classList.add('dragging')}
+    e.preventDefault();viewport.scrollLeft=mouseDrag.left-dx;viewport.scrollTop=mouseDrag.top-dy;
+  });
+  function finishMouseDrag(e){if(!mouseDrag||e.pointerId!==mouseDrag.id)return;if(mouseDrag.moved)suppressDragClickUntil=performance.now()+250;mouseDrag=null;viewport.classList.remove('dragging');if(viewport.hasPointerCapture(e.pointerId))viewport.releasePointerCapture(e.pointerId)}
+  viewport.addEventListener('pointerup',finishMouseDrag);
+  viewport.addEventListener('pointercancel',finishMouseDrag);
+  viewport.addEventListener('lostpointercapture',()=>{mouseDrag=null;viewport.classList.remove('dragging')});
+  viewport.addEventListener('click',e=>{if(performance.now()<suppressDragClickUntil){e.preventDefault();e.stopPropagation()}},true);
+  viewport.addEventListener('dragstart',e=>{e.preventDefault()});
   // Browsers report trackpad pinches as Ctrl+wheel; Safari also has gesture events.
   let safariGesture=null,wheelKind=null,wheelLastTime=0;
   function zoomAt(value,x,y){const a=anchorAt(x,y);setZoom(value);restoreAnchor(a,x,y)}
