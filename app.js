@@ -52,6 +52,30 @@
     if(touch&&!usedPinch&&fits){const dx=e.changedTouches[0].clientX-touch.x,dy=e.changedTouches[0].clientY-touch.y;if(Math.abs(dx)>65&&Math.abs(dx)>Math.abs(dy)*1.7)show(current+(dx<0?1:-1))}touch=null;
   },{passive:true});
   viewport.addEventListener('touchcancel',()=>{pinch=null;touch=null;usedPinch=false},{passive:true});
+  // Browsers report trackpad pinches as Ctrl+wheel; Safari also has gesture events.
+  let safariGesture=null,wheelKind=null,wheelLastTime=0;
+  function zoomAt(value,x,y){const a=anchorAt(x,y);setZoom(value);restoreAnchor(a,x,y)}
+  viewport.addEventListener('wheel',e=>{
+    if(safariGesture){e.preventDefault();return}
+    if(e.shiftKey&&!e.ctrlKey&&!e.metaKey)return;
+    const now=performance.now(),amount=Math.abs(e.deltaY);
+    if(now-wheelLastTime>180)wheelKind=null;
+    wheelLastTime=now;
+    const pinchWheel=e.ctrlKey||e.metaKey;
+    if(!pinchWheel){
+      const discrete=e.deltaMode!==0||(e.deltaX===0&&Number.isInteger(amount)&&amount>=40&&(amount%40===0||amount%50===0));
+      if(e.deltaX!==0||!discrete)wheelKind='trackpad';
+      else if(!wheelKind)wheelKind='mouse';
+      if(wheelKind!=='mouse')return;
+    }
+    e.preventDefault();
+    const pixels=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?viewport.clientHeight:1);
+    const change=Math.max(-150,Math.min(150,pixels));
+    zoomAt(zoom*Math.exp(-change*(pinchWheel ? .01 : .0025)),e.clientX,e.clientY);
+  },{passive:false});
+  viewport.addEventListener('gesturestart',e=>{e.preventDefault();const r=viewport.getBoundingClientRect(),x=Number.isFinite(e.clientX)?e.clientX:r.left+r.width/2,y=Number.isFinite(e.clientY)?e.clientY:r.top+r.height/2;safariGesture={zoom,anchor:anchorAt(x,y),x,y}},{passive:false});
+  viewport.addEventListener('gesturechange',e=>{if(!safariGesture)return;e.preventDefault();setZoom(safariGesture.zoom*e.scale);restoreAnchor(safariGesture.anchor,safariGesture.x,safariGesture.y)},{passive:false});
+  viewport.addEventListener('gestureend',e=>{if(safariGesture)e.preventDefault();safariGesture=null},{passive:false});
   viewport.addEventListener('dblclick',e=>{if(e.target.closest('a'))return;e.preventDefault();if(zoom>1)fit(true);else{const a=anchorAt(e.clientX,e.clientY);setZoom(2);restoreAnchor(a,e.clientX,e.clientY)}});
   const normalize=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
   let matches=[],activeMatch=-1,searchTimer;
